@@ -346,18 +346,12 @@ async function fetchFeed(feedUrl, artworkUrl = null, podcastName = '') {
 }
 
 function displayPodcastDetail(episodes, podcastName, artworkUrl) {
-    // Store all episodes
+    // Store all episodes and podcast name
     window.currentPodcast.allEpisodes = episodes;
+    window.currentPodcast.name = podcastName || 'Podcast';
     
     // Update podcast detail header
-    document.getElementById('podcast-name').textContent = podcastName || 'Podcast';
-    const detailArtwork = document.getElementById('detail-podcast-artwork');
-    if (artworkUrl) {
-        detailArtwork.src = artworkUrl;
-        detailArtwork.style.display = 'block';
-    } else {
-        detailArtwork.style.display = 'none';
-    }
+    document.getElementById('podcast-name').textContent = window.currentPodcast.name;
     
     // Display episodes using the stored function
     if (window.displayDetailEpisodes) {
@@ -372,6 +366,7 @@ function displayPodcastDetail(episodes, podcastName, artworkUrl) {
     // Scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+
 
 function parseRSSXml(xmlText, podcastName = '', artworkUrl = null) {
     try {
@@ -473,15 +468,26 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             const listItem = document.createElement('li');
+            listItem.style.display = 'flex';
+            listItem.style.justifyContent = 'space-between';
+            listItem.style.alignItems = 'center';
+            listItem.style.padding = '0.5rem';
+            listItem.style.marginBottom = '0.25rem';
+            
+            const titleSpan = document.createElement('span');
+            titleSpan.style.flex = '1';
             
             if (audioUrl) {
-                listItem.textContent = episode.title;
-                listItem.addEventListener('click', () => playEpisode(audioUrl, episode.title));
-                listItem.style.cursor = 'pointer';
+                titleSpan.textContent = episode.title;
+                titleSpan.style.cursor = 'pointer';
+                titleSpan.addEventListener('click', () => playEpisode(audioUrl, episode.title));
+                
+                listItem.appendChild(titleSpan);
             } else {
-                listItem.textContent = episode.title + ' (No audio)';
-                listItem.style.color = '#999';
-                listItem.style.textDecoration = 'line-through';
+                titleSpan.textContent = episode.title + ' (No audio)';
+                titleSpan.style.color = '#999';
+                titleSpan.style.textDecoration = 'line-through';
+                listItem.appendChild(titleSpan);
             }
             
             detailEpisodes.appendChild(listItem);
