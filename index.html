@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSS Podcast Player</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="header-top">
+            <h1>RSS Podcast Player</h1>
+            <button id="theme-toggle" class="theme-toggle" title="Toggle dark mode">🌙</button>
+        </div>
+        <div class="header-controls">
+            <input type="text" id="search-term" placeholder="Search for a podcast">
+            <button id="search-feed">Search</button>
+            <input type="text" id="rss-url" placeholder="Enter RSS Feed URL">
+            <button id="fetch-feed">Fetch Feed</button>
+        </div>
+    </header>
+    <main>
+        <section id="podcast-list">
+            <h2>Podcast Episodes</h2>
+            <div id="search-results-container" class="search-results-container"></div>
+            <ul id="episodes"></ul>
+        </section>
+        <section id="player">
+            <h2>Now Playing</h2>
+            <audio id="audio-player" crossorigin="anonymous"></audio>
+            <div id="player-container">
+                <div class="player-artwork-section">
+                    <img id="podcast-artwork" class="podcast-artwork" src="" alt="Podcast artwork" style="display: none;">
+                </div>
+                <div id="current-episode" class="current-episode">
+                    <span id="episode-title">No episode selected</span>
+                </div>
+                <div class="player-controls">
+                    <button id="play-btn" class="play-btn">
+                        <span class="play-icon">▶</span>
+                    </button>
+                    <div class="player-info">
+                        <div class="timeline-container">
+                            <div class="timeline" id="timeline">
+                                <div class="progress" id="progress"></div>
+                                <div class="slider" id="slider"></div>
+                            </div>
+                        </div>
+                        <div class="time-display">
+                            <span id="current-time">0:00</span>
+                            <span class="time-separator">/</span>
+                            <span id="duration">0:00</span>
+                        </div>
+                    </div>
+                    <div class="volume-control">
+                        <span class="volume-icon">🔊</span>
+                        <input type="range" id="volume-slider" min="0" max="100" value="70">
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    <script src="script.js"></script>
+</body>
+</html>
