@@ -9,10 +9,11 @@
 <body>
     <header>
         <div class="header-top">
+            <button id="back-btn" class="back-btn" style="display: none;">← Back</button>
             <h1>RSS Podcast Player</h1>
             <button id="theme-toggle" class="theme-toggle" title="Toggle dark mode">🌙</button>
         </div>
-        <div class="header-controls">
+        <div class="header-controls" id="header-controls">
             <input type="text" id="search-term" placeholder="Search for a podcast">
             <button id="search-feed">Search</button>
             <input type="text" id="rss-url" placeholder="Enter RSS Feed URL">
@@ -20,11 +21,27 @@
         </div>
     </header>
     <main>
-        <section id="podcast-list">
+        <!-- Search/Browse Screen -->
+        <section id="podcast-list" class="view-screen active-screen">
             <h2>Podcast Episodes</h2>
             <div id="search-results-container" class="search-results-container"></div>
             <ul id="episodes"></ul>
         </section>
+
+        <!-- Podcast Detail Screen -->
+        <section id="podcast-detail" class="view-screen">
+            <div id="podcast-header" class="podcast-header">
+                <img id="detail-podcast-artwork" class="detail-podcast-artwork" src="" alt="Podcast artwork" style="display: none;">
+                <h2 id="podcast-name"></h2>
+            </div>
+            <div id="episodes-list-container">
+                <h3>Episodes</h3>
+                <ul id="detail-episodes"></ul>
+                <button id="load-more-btn" class="load-more-btn" style="display: none;">Load More Episodes</button>
+            </div>
+        </section>
+
+        <!-- Player -->
         <section id="player">
             <h2>Now Playing</h2>
             <audio id="audio-player" crossorigin="anonymous"></audio>

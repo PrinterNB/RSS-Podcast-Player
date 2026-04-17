@@ -44,6 +44,11 @@ function displayEpisodes(episodes) {
             episodesList.appendChild(listItem);
         }
     });
+
+    // Scroll to episodes list on mobile
+    setTimeout(() => {
+        episodesList.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
 }
 
 async function resolveRedirectUrl(url) {
@@ -292,7 +297,7 @@ function displaySearchResults(results) {
                 
                 resultItem.addEventListener('click', () => {
                     console.log('Clicking podcast:', result.collectionName);
-                    fetchFeed(result.feedUrl, artworkUrl);
+                    fetchFeed(result.feedUrl, artworkUrl, result.collectionName);
                 });
             } else {
                 const title = document.createElement('div');
@@ -306,7 +311,7 @@ function displaySearchResults(results) {
     });
 }
 
-async function fetchFeed(feedUrl, artworkUrl = null) {
+async function fetchFeed(feedUrl, artworkUrl = null, podcastName = '') {
     if (!feedUrl) {
         alert('No feed URL available for this podcast.');
         return;
@@ -316,48 +321,71 @@ async function fetchFeed(feedUrl, artworkUrl = null) {
         const encodedUrl = encodeURIComponent(feedUrl);
         console.log('Fetching feed from:', feedUrl);
         
-        // Store artwork URL globally so displayEpisodes can access it
+        // Store artwork URL and podcast info globally
         window.currentPodcastArtwork = artworkUrl;
+        window.currentPodcast.name = podcastName;
+        window.currentPodcast.artwork = artworkUrl;
+        window.currentPodcast.feedUrl = feedUrl;
         
-        // Try primary API first
+        // Try rss2json API first (more reliable than proxy)
         let response = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodedUrl}`);
         
-        if (response.status === 422) {
-            // If 422, try direct fetch with CORS proxy
-            console.log('Got 422 error, trying direct fetch');
-            response = await fetch(`https://api.allorigins.win/get?url=${encodedUrl}`);
-        }
-        
-        if (!response.ok) {
-            throw new Error(`HTTP Error: ${response.status}`);
-        }
-
-        let data = await response.json();
-        
-        // Handle allorigins response format
-        if (data.contents) {
-            const parser = new DOMParser();
-            const xmlDoc = parser.parseFromString(data.contents, 'text/xml');
-            
-            if (xmlDoc.getElementsByTagName('parsererror').length === 0) {
-                parseRSSXml(data.contents);
+        if (response.ok) {
+            let data = await response.json();
+            if (data.status === 'ok' && data.items) {
+                displayPodcastDetail(data.items, podcastName, artworkUrl);
                 return;
             }
         }
         
-        // Handle rss2json response format
-        if (data.status === 'ok' && data.items) {
-            displayEpisodes(data.items);
-        } else if (data.status !== 'ok') {
-            throw new Error(`API error: ${data.message || 'Unknown error'}`);
+        // Fallback to allorigins if rss2json fails
+        console.log('rss2json failed, trying allorigins...');
+        response = await fetch(`https://api.allorigins.win/get?url=${encodedUrl}`);
+        
+        if (response.ok) {
+            let data = await response.json();
+            if (data.contents) {
+                parseRSSXml(data.contents, podcastName, artworkUrl);
+                return;
+            }
         }
+        
+        throw new Error('All feed fetching methods failed');
     } catch (error) {
         console.error('Error fetching feed:', error);
-        alert(`Error fetching RSS feed: ${error.message}`);
+        alert(`Error fetching RSS feed: ${error.message}\n\nMake sure the feed URL is valid and the podcast still exists.`);
     }
 }
 
-function parseRSSXml(xmlText) {
+function displayPodcastDetail(episodes, podcastName, artworkUrl) {
+    // Store all episodes
+    window.currentPodcast.allEpisodes = episodes;
+    
+    // Update podcast detail header
+    document.getElementById('podcast-name').textContent = podcastName || 'Podcast';
+    const detailArtwork = document.getElementById('detail-podcast-artwork');
+    if (artworkUrl) {
+        detailArtwork.src = artworkUrl;
+        detailArtwork.style.display = 'block';
+    } else {
+        detailArtwork.style.display = 'none';
+    }
+    
+    // Display episodes using the stored function
+    if (window.displayDetailEpisodes) {
+        window.displayDetailEpisodes(episodes, false);
+    }
+    
+    // Switch screens using the stored function
+    if (window.showScreen) {
+        window.showScreen('podcast-detail');
+    }
+    
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function parseRSSXml(xmlText, podcastName = '', artworkUrl = null) {
     try {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
@@ -379,7 +407,7 @@ function parseRSSXml(xmlText) {
             }
         }
         
-        displayEpisodes(episodes);
+        displayPodcastDetail(episodes, podcastName, artworkUrl);
     } catch (error) {
         console.error('Error parsing RSS XML:', error);
         alert(`Error parsing RSS feed: ${error.message}`);
@@ -387,6 +415,111 @@ function parseRSSXml(xmlText) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Global state for podcast details
+    window.currentPodcast = {
+        name: '',
+        artwork: '',
+        feedUrl: '',
+        allEpisodes: [],
+        displayedEpisodes: 0
+    };
+
+    // Screen switching functions
+    function showScreen(screenId) {
+        document.querySelectorAll('.view-screen').forEach(screen => {
+            screen.classList.remove('active-screen');
+        });
+        document.getElementById(screenId).classList.add('active-screen');
+        
+        const backBtn = document.getElementById('back-btn');
+        const headerControls = document.getElementById('header-controls');
+        
+        if (screenId === 'podcast-detail') {
+            backBtn.style.display = 'block';
+            headerControls.style.display = 'none';
+        } else {
+            backBtn.style.display = 'none';
+            headerControls.style.display = 'flex';
+        }
+    }
+
+    // Back button
+    const backBtn = document.getElementById('back-btn');
+    backBtn.addEventListener('click', () => {
+        showScreen('podcast-list');
+        window.currentPodcast = { name: '', artwork: '', feedUrl: '', allEpisodes: [], displayedEpisodes: 0 };
+    });
+
+    // Load more button
+    const loadMoreBtn = document.getElementById('load-more-btn');
+    loadMoreBtn.addEventListener('click', () => {
+        displayDetailEpisodes(window.currentPodcast.allEpisodes, true);
+    });
+
+    function displayDetailEpisodes(allEpisodes, isLoadMore = false) {
+        const detailEpisodes = document.getElementById('detail-episodes');
+        const loadMoreBtn = document.getElementById('load-more-btn');
+        const episodesPerLoad = 20;
+        
+        if (!isLoadMore) {
+            detailEpisodes.innerHTML = '';
+            window.currentPodcast.displayedEpisodes = 0;
+        }
+        
+        const endIndex = Math.min(
+            window.currentPodcast.displayedEpisodes + episodesPerLoad,
+            allEpisodes.length
+        );
+        
+        for (let i = window.currentPodcast.displayedEpisodes; i < endIndex; i++) {
+            const episode = allEpisodes[i];
+            if (!episode || !episode.title) continue;
+            
+            let audioUrl = null;
+            if (episode.enclosure && episode.enclosure.link) {
+                audioUrl = episode.enclosure.link;
+            } else if (episode.enclosure && episode.enclosure.url) {
+                audioUrl = episode.enclosure.url;
+            } else if (episode.link && episode.link.includes('mp3')) {
+                audioUrl = episode.link;
+            }
+            
+            const listItem = document.createElement('li');
+            
+            if (audioUrl) {
+                listItem.textContent = episode.title;
+                listItem.addEventListener('click', () => playEpisode(audioUrl, episode.title));
+                listItem.style.cursor = 'pointer';
+            } else {
+                listItem.textContent = episode.title + ' (No audio)';
+                listItem.style.color = '#999';
+                listItem.style.textDecoration = 'line-through';
+            }
+            
+            detailEpisodes.appendChild(listItem);
+        }
+        
+        window.currentPodcast.displayedEpisodes = endIndex;
+        
+        // Always show load more button for better UX
+        if (endIndex < allEpisodes.length) {
+            loadMoreBtn.style.display = 'block';
+            loadMoreBtn.disabled = false;
+            loadMoreBtn.textContent = `Load More Episodes (${endIndex}/${allEpisodes.length})`;
+        } else {
+            loadMoreBtn.style.display = 'block';
+            loadMoreBtn.disabled = true;
+            loadMoreBtn.textContent = `All Episodes Loaded (${allEpisodes.length})`;
+        }
+        
+        // Scroll to episodes if loading more
+        if (isLoadMore) {
+            setTimeout(() => {
+                loadMoreBtn.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            }, 100);
+        }
+    }
+    
     // Fetch feed button
     const fetchButton = document.getElementById('fetch-feed');
     if (fetchButton) {
@@ -399,7 +532,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            await fetchFeed(rssUrl);
+            await fetchFeed(rssUrl, null, 'Direct Feed');
         });
     }
 
@@ -562,5 +695,9 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('theme', 'light');
         }
     });
+
+    // Store functions globally for access outside DOMContentLoaded
+    window.showScreen = showScreen;
+    window.displayDetailEpisodes = displayDetailEpisodes;
 });
 
