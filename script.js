@@ -327,7 +327,7 @@ async function fetchFeed(feedUrl, artworkUrl = null, podcastName = '') {
         window.currentPodcast.artwork = artworkUrl;
         window.currentPodcast.feedUrl = feedUrl;
         
-        // Try rss2json API first (more reliable than proxy)
+        // Use rss2json API (reliable and fast)
         let response = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodedUrl}`);
         
         if (response.ok) {
@@ -338,19 +338,7 @@ async function fetchFeed(feedUrl, artworkUrl = null, podcastName = '') {
             }
         }
         
-        // Fallback to allorigins if rss2json fails
-        console.log('rss2json failed, trying allorigins...');
-        response = await fetch(`https://api.allorigins.win/get?url=${encodedUrl}`);
-        
-        if (response.ok) {
-            let data = await response.json();
-            if (data.contents) {
-                parseRSSXml(data.contents, podcastName, artworkUrl);
-                return;
-            }
-        }
-        
-        throw new Error('All feed fetching methods failed');
+        throw new Error('Could not fetch podcast episodes');
     } catch (error) {
         console.error('Error fetching feed:', error);
         alert(`Error fetching RSS feed: ${error.message}\n\nMake sure the feed URL is valid and the podcast still exists.`);
